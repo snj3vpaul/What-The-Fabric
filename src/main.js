@@ -1,17 +1,249 @@
-import * as THREE from 'three';
-import { fabrics } from './fabrics';
 import './style.css';
-const app=document.querySelector('#app');
-app.innerHTML=`<div class="site"><header class="topbar"><a href="#top" class="brand">WHAT THE <span>FABRIC!</span><i>✳</i></a><nav><a href="#lab">The lab</a><a href="#learn">The science</a><a href="#about">About</a></nav><span class="edition">AN INTERACTIVE TEXTILE INDEX&nbsp; / &nbsp;01</span></header><main id="top"><section class="intro"><div class="eyebrow"><span class="dot"></span> THE MATERIAL EXPERIENCE <span class="rule"></span> VOL. 01 — 2026</div><h1>Ever wondered<br/>what a fabric <em>feels</em> like?</h1><div class="intro-bottom"><p>Meet the fabric before you meet the garment.<br/>Explore its movement, texture, and character.</p><a href="#lab" class="discover">ENTER THE MATERIAL LAB <span>↘</span></a></div></section><section class="lab" id="lab"><div class="lab-top"><div><span class="kicker">01 / THE MATERIAL LAB</span><h2>Get a feel <em>for it.</em></h2></div><div class="selector"><label for="fabricSelect">CHOOSE A MATERIAL</label><select id="fabricSelect" aria-label="Choose a fabric"></select></div></div><div class="workspace"><div class="viewer" id="viewer"><canvas id="cloth" aria-label="Interactive three-dimensional fabric simulation"></canvas><div class="viewer-head"><span class="live"><span class="dot"></span> LIVE MATERIAL STUDY</span><span id="specimen">SPECIMEN 01 / 08</span></div><div class="viewer-foot"><span>↗ DRAG TO DISTURB THE SURFACE</span><button id="reset" type="button">RESET VIEW ↺</button></div><div class="viewer-fallback" id="fallback" hidden>3D preview unavailable on this device. Fabric details remain accessible below.</div></div><aside class="inspector"><div class="inspector-top"><span class="kicker">MATERIAL PROFILE</span><span class="index" id="fabricIndex">01 — 08</span></div><div class="inspector-body"><p class="family" id="family"></p><h3 id="fabricName"></h3><p class="subtitle" id="subtitle"></p><p class="description" id="description"></p><div class="attributes"><div><span>TO THE TOUCH</span><strong id="touch"></strong></div><div><span>BEST WORN</span><strong id="season"></strong></div></div><div class="meterbox"><span>THE MATERIAL CHARACTER</span><div class="metric"><span>Drape</span><div class="track"><i id="drape"></i></div><b id="drapeVal"></b></div><div class="metric"><span>Airflow*</span><div class="track"><i id="air"></i></div><b id="airVal"></b></div><div class="metric"><span>Warmth*</span><div class="track"><i id="warmth"></i></div><b id="warmthVal"></b></div></div></div><div class="inspector-foot"><span>✳</span><p>*Illustrative tendencies for typical constructions, not measured lab results.</p></div></aside></div><div class="lab-note"><span>INTERACT WITH THE MATERIAL</span><p>Move your pointer or drag your finger across the cloth. Watch the folds react. Change materials to compare their character.</p></div></section><section class="science" id="learn"><div class="science-title"><span class="kicker">02 / UNDER THE SURFACE</span><h2>It's more than<br/><em>just a name.</em></h2></div><div class="science-copy"><p>A fabric’s name tells only part of its story. Fiber, weave, finish and weight work together to determine how it behaves.</p><div class="science-grid"><div><span>01</span><h4>Fiber</h4><p>What it's made of.</p></div><div><span>02</span><h4>Construction</h4><p>How yarns become cloth.</p></div><div><span>03</span><h4>Finish</h4><p>What changes the surface.</p></div><div><span>04</span><h4>Weight</h4><p>How substantial it feels.</p></div></div></div></section><section class="facts"><span class="kicker">03 / THINGS WORTH KNOWING</span><h2>Beyond the <em>label.</em></h2><div id="facts"></div></section><footer id="about"><div class="footer-wordmark">WHAT THE <em>FABRIC!</em></div><div class="footer-bottom"><p>An independent experiment in material curiosity.<br/>Built to make textile knowledge tangible.</p><span>MADE FOR CURIOUS HANDS · © 2026</span><a href="#top">BACK TO TOP ↑</a></div></footer></main></div>`;
-const select=document.querySelector('#fabricSelect'); fabrics.forEach(f=>select.add(new Option(f.name,f.id)));
-let active=fabrics[0], scene,camera,renderer,mesh,material,geometry,frame=0,drag=false,lastPointer={x:0,y:0},impulses=[],clock=new THREE.Clock(),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-const viewer=document.querySelector('#viewer');
-function init3D(){try{const canvas=document.querySelector('#cloth');renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));renderer.outputColorSpace=THREE.SRGBColorSpace;scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(36,1,0.1,100);camera.position.set(0,0,8.4);scene.add(new THREE.AmbientLight(0xffffff,1.6));const light=new THREE.DirectionalLight(0xffffff,3.2);light.position.set(-3,5,7);scene.add(light);const fill=new THREE.DirectionalLight(0xffe8d4,1.4);fill.position.set(4,-3,4);scene.add(fill);geometry=new THREE.PlaneGeometry(6.7,5.3,100,80);material=new THREE.MeshPhysicalMaterial({color:active.color,side:THREE.DoubleSide,roughness:.36,metalness:.1,clearcoat:.3,clearcoatRoughness:.3});mesh=new THREE.Mesh(geometry,material);mesh.rotation.z=-.11;scene.add(mesh);const obs=new ResizeObserver(resize);obs.observe(viewer);resize();if(!reduced)animate();else {updateMesh(0);renderer.render(scene,camera);}return true;}catch(e){console.warn('WebGL unavailable',e);document.querySelector('#fallback').hidden=false;document.querySelector('#cloth').style.display='none';return false;}}
-const base=()=>geometry.attributes.position;
-function updateMesh(t){if(!mesh)return;const pos=base(),stiff=active.stiffness,weight=active.weight;for(let i=0;i<pos.count;i++){const x=pos.getX(i),y=pos.getY(i);let z=.34*Math.sin(x*1.85+y*.68+t*(.22+(.8-stiff)*.25))+.20*Math.cos(y*2.15-x*.35-t*.16);z+=(1-stiff)*.24*Math.sin(x*3.2+y*1.6+t*.46);z+=.08*Math.sin(x*9+y*2.3)*active.texture/5;z-=weight*.12*(1-Math.pow(Math.abs(y)/2.65,2));for(const p of impulses){const dx=x-p.x,dy=y-p.y,d=Math.sqrt(dx*dx+dy*dy);z+=Math.sin(d*5-p.age*8)*Math.exp(-d*1.5)*p.power*(1-stiff*.65)*Math.exp(-p.age*1.6);}pos.setZ(i,z);}pos.needsUpdate=true;geometry.computeVertexNormals();mesh.rotation.y=.07*Math.sin(t*.24);mesh.rotation.x=.045*Math.cos(t*.3);}
-function animate(){frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;impulses.forEach(p=>p.age+=dt);impulses=impulses.filter(p=>p.age<2.2);updateMesh(t);renderer.render(scene,camera);}
-function resize(){if(!renderer)return;const w=viewer.clientWidth,h=viewer.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.position.z=w<550?11.8:w<900?9.6:8.4;camera.updateProjectionMatrix();if(reduced){updateMesh(0);renderer.render(scene,camera);}}
-function disturb(e,power=.5){if(!mesh||reduced)return;const rect=viewer.getBoundingClientRect();const x=(e.clientX-rect.left)/rect.width*2-1,y=-((e.clientY-rect.top)/rect.height*2-1);impulses.push({x:x*3.7,y:y*3.0,age:0,power});if(impulses.length>12)impulses.shift();}
-viewer.addEventListener('pointerdown',e=>{drag=true;viewer.setPointerCapture(e.pointerId);disturb(e,1.1)});viewer.addEventListener('pointerup',()=>drag=false);viewer.addEventListener('pointercancel',()=>drag=false);viewer.addEventListener('pointermove',e=>{if(drag){disturb(e,.6)}else if(e.pointerType==='mouse'&&Math.random()<.16){disturb(e,.12)}});document.querySelector('#reset').addEventListener('click',()=>{impulses=[];if(reduced){updateMesh(0);renderer.render(scene,camera)}});
-function setFabric(id){active=fabrics.find(f=>f.id===id)||fabrics[0];const idx=fabrics.indexOf(active)+1;const put=(id,v)=>document.getElementById(id).textContent=v;put('specimen',`SPECIMEN ${String(idx).padStart(2,'0')} / ${String(fabrics.length).padStart(2,'0')}`);put('fabricIndex',`${String(idx).padStart(2,'0')} — ${String(fabrics.length).padStart(2,'0')}`);put('family',active.family);put('fabricName',active.name);put('subtitle',active.subtitle);put('description',active.description);put('touch',active.touch);put('season',active.season);for(const k of ['drape','air','warmth']){document.getElementById(k).style.width=`${active[k]*20}%`;put(k+'Val',`${active[k]}/5`);}document.documentElement.style.setProperty('--accent',active.accent);document.getElementById('facts').innerHTML=active.facts.map((fact,i)=>`<div class="fact"><span>0${i+1}</span><p>${fact}</p><span>↗</span></div>`).join('');if(material){material.color.set(active.color);material.roughness=active.id==='linen'?.91:active.id==='velvet'?.96:active.id==='tissue'?.28:active.id==='shimmer'?.24:.46;material.metalness=active.id==='tissue'?.6:active.id==='shimmer'?.56:.05;material.clearcoat=active.shine*.85;material.needsUpdate=true;if(reduced){updateMesh(0);renderer.render(scene,camera)}}}
-select.addEventListener('change',e=>setFabric(e.target.value));setFabric('silk');init3D();document.addEventListener('visibilitychange',()=>{if(!renderer||reduced)return;if(document.hidden){cancelAnimationFrame(frame)}else{clock.getDelta();animate()}});
+import { FABRICS, FAMILIES, SEASONS, byId, comfortAt, firstTouchAt } from './fabrics.js';
+import { FabricStage, webglAvailable } from './scene.js';
+import { Feel } from './feel.js';
+
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const lowPower = matchMedia('(pointer: coarse)').matches || (navigator.hardwareConcurrency || 8) <= 4;
+
+const SCALE_LABELS = { drape: 'Drape', crisp: 'Crispness', sheen: 'Sheen', breath: 'Breathability', warmth: 'Warmth' };
+const MODES = [
+  { id: 'pleats', label: 'Saree pleats', hint: 'Gathered at the waist. Watch how the pleats fan out.' },
+  { id: 'pallu', label: 'Pallu', hint: 'Falling free from the shoulder.' },
+  { id: 'dupatta', label: 'Dupatta', hint: 'Held at two points, the swag shows weight.' },
+];
+const PRESETS = [
+  { label: 'Delhi · May', t: 44, humid: false },
+  { label: 'Mumbai · July', t: 31, humid: true },
+  { label: 'Bengaluru · Nov', t: 23, humid: false },
+  { label: 'Lahore · Jan', t: 7, humid: false },
+];
+
+const state = {
+  id: (location.hash.slice(1) && byId[location.hash.slice(1)]) ? location.hash.slice(1) : 'velvet',
+  color: 0, mode: 'pallu', temp: 31, humid: false, sound: false,
+};
+
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const dots = (n, max = 5) => Array.from({ length: max }, (_, i) => `<i class="${i < n ? 'f' : ''}"></i>`).join('');
+
+document.getElementById('app').innerHTML = `
+<header class="top">
+  <a class="mark" href="#" aria-label="What The Fabric! home"><span>What The</span> <em>Fabric!</em></a>
+  <p class="tag">A material lab for suits &amp; sarees</p>
+  <nav><a href="#atlas">Atlas</a><a href="#seasons">Season guide</a><a href="#about">About the model</a></nav>
+</header>
+
+<main class="lab">
+  <section class="stage" aria-label="Interactive fabric">
+    <div class="canvas" id="canvas"></div>
+    <div class="hud top-hud">
+      <label class="select">
+        <span class="mono">Fabric</span>
+        <select id="fabric">${FAMILIES.map((fam) => `<optgroup label="${fam.label}">${FABRICS.filter((f) => f.family === fam.id).map((f) => `<option value="${f.id}">${f.name}</option>`).join('')}</optgroup>`).join('')}</select>
+      </label>
+      <div class="seg" role="radiogroup" aria-label="Drape">${MODES.map((m) => `<button role="radio" data-mode="${m.id}">${m.label}</button>`).join('')}</div>
+    </div>
+    <div class="hud bottom-hud">
+      <div class="swatches" id="swatches" role="radiogroup" aria-label="Dye colour"></div>
+      <div class="actions">
+        <button class="ghost" id="sound" aria-pressed="false" title="Rustle sound and, on Android, light vibration">Sound &amp; haptics: off</button>
+        <button class="ghost" id="zoom" aria-pressed="false">Look closer</button>
+        <button class="ghost" id="reset">Reset drape</button>
+      </div>
+    </div>
+    <p class="hint mono" id="hint">Hover to brush · drag to lift</p>
+    <div class="ring" id="ring" aria-hidden="true"></div>
+    <div class="ring-label" id="ringLabel" aria-hidden="true"><b data-hand></b><span data-temp></span></div>
+  </section>
+
+  <aside class="panel" id="panel" aria-live="polite"></aside>
+</main>
+
+<section class="atlas" id="atlas">
+  <div class="section-head"><h2>The atlas</h2><p>Twenty cloths that actually reach a tailor’s table in India and Pakistan. Each one is modelled for touch, temperature and drape. Choose one to try it.</p></div>
+  <div class="grid" id="grid"></div>
+</section>
+
+<section class="seasons" id="seasons">
+  <div class="section-head"><h2>Season guide</h2><p>What to wear when, across the North Indian and Punjab plains. Fabrics listed are the strongest choices for each season.</p></div>
+  <div class="season-rows" id="seasonRows"></div>
+</section>
+
+<section class="about" id="about">
+  <h2>About the model</h2>
+  <div class="cols">
+    <p><b>The movement is simulated, not animated.</b> Each fabric is a grid of about 1,500 points joined by springs. Its weight decides how it hangs and how much air moves it. Its crispness sets how strongly it resists folding. Your cursor is a fingertip: it presses into the cloth, and its friction drags the cloth with it. Velvet grips; satin barely moves.</p>
+    <p><b>The surface is built from the weave up.</b> Plain, satin, twill, crepe, slub, pile and net structures are generated as micro-relief. Silk and satin shine along the yarn direction, velvet and pashmina have a soft pile glow, organza and shimmer show colour shifts, and zari is treated as real metal. Velvet keeps the trail of your finger, as real velvet does.</p>
+    <p><b>Honest limits.</b> A screen cannot transmit touch, so feel is translated into motion, light, optional sound and light vibration. The 0–5 ratings are editorial comparisons, not lab results; real fabrics vary by mill, blend and finish. Colours are artistic, not calibrated.</p>
+  </div>
+</section>
+<footer class="foot mono">What The Fabric! · Material Lab</footer>
+`;
+
+// ───────── stage ─────────
+let stage = null, feel = null;
+const canvasEl = $('#canvas');
+if (webglAvailable()) {
+  stage = new FabricStage(canvasEl, { lowPower, reducedMotion });
+  feel = new Feel($('#ring'), $('#ringLabel'), { reducedMotion, bounds: () => document.querySelector('.stage').getBoundingClientRect() });
+  stage.on('hover', (h) => feel.update(h));
+  stage.on('grab', (g) => { $('#hint').classList.add('used'); document.body.classList.toggle('grabbing', g); });
+} else {
+  canvasEl.innerHTML = `<div class="fallback"><div class="fallback-swatch" id="fbSwatch"></div><p>Your browser can’t run the 3D view, so here are the full notes and a colour swatch instead.</p></div>`;
+}
+
+// ───────── controls ─────────
+const sel = $('#fabric');
+sel.addEventListener('change', () => selectFabric(sel.value));
+document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+$('#reset').addEventListener('click', () => stage?.reset());
+$('#zoom').addEventListener('click', (e) => {
+  const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+  e.currentTarget.setAttribute('aria-pressed', on);
+  e.currentTarget.textContent = on ? 'Step back' : 'Look closer';
+  stage?.setZoom(on);
+});
+$('#sound').addEventListener('click', async (e) => {
+  state.sound = !state.sound;
+  e.currentTarget.setAttribute('aria-pressed', state.sound);
+  e.currentTarget.textContent = `Sound & haptics: ${state.sound ? 'on' : 'off'}`;
+  await feel?.enableAudio(state.sound);
+});
+
+function setMode(mode) {
+  state.mode = mode;
+  document.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-checked', b.dataset.mode === mode));
+  stage?.setMode(mode);
+  $('#hint').textContent = MODES.find((m) => m.id === mode).hint + ' Hover to brush · drag to lift';
+}
+
+function renderSwatches(f) {
+  $('#swatches').innerHTML = f.colors.map((c, i) => `<button role="radio" aria-checked="${i === state.color}" aria-label="Colour ${i + 1}" style="--c:${c}" data-i="${i}"></button>`).join('');
+  $('#swatches').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    state.color = +b.dataset.i; renderSwatches(f);
+    applyAccent(f); stage?.setColor(f.colors[state.color]);
+    const fb = $('#fbSwatch'); if (fb) fb.style.background = f.colors[state.color];
+  }));
+}
+
+// Accent follows the dye, but pale dyes (ivory, mint) are deepened so text stays legible on paper.
+function applyAccent(f) {
+  const hex = f.colors[state.color];
+  const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  const k = lum > 0.5 ? 0.5 / lum * 0.75 : 1;
+  const ink = `rgb(${Math.round(r * k)}, ${Math.round(g * k)}, ${Math.round(b * k)})`;
+  document.documentElement.style.setProperty('--accent', ink);
+}
+
+function selectFabric(id, { scroll = false } = {}) {
+  const f = byId[id];
+  state.id = id; state.color = 0;
+  sel.value = id;
+  history.replaceState(null, '', `#${id}`);
+  renderSwatches(f); applyAccent(f);
+  stage?.setFabric(f, f.colors[0]);
+  feel?.setFabric(f); feel?.setTemp(state.temp);
+  const fb = $('#fbSwatch'); if (fb) fb.style.background = f.colors[0];
+  renderPanel(f);
+  document.querySelectorAll('.card').forEach((c) => c.setAttribute('aria-current', c.dataset.id === id));
+  if (scroll) document.querySelector('.lab').scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' });
+}
+
+// ───────── panel ─────────
+function renderPanel(f) {
+  const fam = FAMILIES.find((x) => x.id === f.family).label;
+  $('#panel').innerHTML = `
+    <p class="eyebrow mono">${esc(fam)} · ${esc(f.weight)}</p>
+    <h1>${esc(f.name)}</h1>
+    <p class="local">${esc(f.local)}</p>
+    <p class="hand">${esc(f.hand)}</p>
+
+    <div class="block">
+      <h3 class="mono">Under the fingertip</h3>
+      <p>${esc(f.touch)}</p>
+    </div>
+
+    <div class="block scales">
+      ${Object.entries(SCALE_LABELS).map(([k, l]) => `<div class="scale"><span>${l}</span><span class="dots" aria-label="${f.scales[k]} of 5">${dots(f.scales[k])}</span></div>`).join('')}
+    </div>
+
+    <div class="block climate">
+      <h3 class="mono">On your skin</h3>
+      <div class="presets">${PRESETS.map((p, i) => `<button class="chip" data-p="${i}">${p.label}</button>`).join('')}</div>
+      <div class="temp-row">
+        <input type="range" id="temp" min="0" max="46" step="1" value="${state.temp}" aria-label="Air temperature in °C" />
+        <label class="humid"><input type="checkbox" id="humid" ${state.humid ? 'checked' : ''}/> Humid</label>
+      </div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+
+    <div class="block">
+      <h3 class="mono">Seasons</h3>
+      <div class="season-chips">${SEASONS.map((s) => `<span class="s s${f.seasons[s.id]}" title="${s.en}, ${s.months}">${s.label}<small>${s.en}</small></span>`).join('')}</div>
+    </div>
+
+    <div class="block">
+      <h3 class="mono">Make it into</h3>
+      <div class="uses">${f.uses.map((u) => `<span class="chip static">${esc(u)}</span>`).join('')}</div>
+    </div>
+
+    <div class="block facts">
+      <div><h3 class="mono">Fibre</h3><p>${esc(f.fibre)}</p></div>
+      <div><h3 class="mono">Construction</h3><p>${esc(f.construction)}</p></div>
+      <div><h3 class="mono">Care</h3><p>${esc(f.care)}</p></div>
+    </div>
+
+    <blockquote class="expert"><span class="mono">Expert’s eye</span>${esc(f.expert)}</blockquote>
+  `;
+  const temp = $('#temp'), humid = $('#humid');
+  temp.addEventListener('input', () => { state.temp = +temp.value; updateVerdict(f); });
+  humid.addEventListener('change', () => { state.humid = humid.checked; updateVerdict(f); });
+  document.querySelectorAll('[data-p]').forEach((b) => b.addEventListener('click', () => {
+    const p = PRESETS[+b.dataset.p]; state.temp = p.t; state.humid = p.humid;
+    temp.value = p.t; humid.checked = p.humid; updateVerdict(f);
+  }));
+  updateVerdict(f);
+}
+
+function updateVerdict(f) {
+  const c = comfortAt(f, state.temp, state.humid);
+  const ft = firstTouchAt(f, state.temp);
+  feel?.setTemp(state.temp);
+  const pct = (state.temp / 46) * 100;
+  $('#temp').style.setProperty('--p', `${pct}%`);
+  $('#verdict').innerHTML = `
+    <div class="v-top"><span class="deg">${state.temp}°<small>C${state.humid ? ' · humid' : ''}</small></span>
+      <span class="v-score"><span class="dots big">${dots(Math.round(c.score))}</span><b>${c.label}</b></span></div>
+    <p>${esc(c.note)}</p>
+    <p class="first mono">First touch: ${esc(ft.words)}</p>`;
+}
+
+// ───────── atlas + seasons ─────────
+$('#grid').innerHTML = FABRICS.map((f) => `
+  <button class="card" data-id="${f.id}">
+    <span class="sw" style="--c:${f.colors[0]}"></span>
+    <span class="c-name">${esc(f.name)}</span>
+    <span class="c-local mono">${esc(f.local)}</span>
+    <span class="c-hand">${esc(f.hand)}</span>
+    <span class="c-bars">
+      <span><em>Breath</em><span class="dots">${dots(f.scales.breath)}</span></span>
+      <span><em>Warmth</em><span class="dots">${dots(f.scales.warmth)}</span></span>
+    </span>
+    <span class="c-seasons">${SEASONS.map((s) => `<i class="s${f.seasons[s.id]}" title="${s.en}">${s.en.slice(0, 2)}</i>`).join('')}</span>
+  </button>`).join('');
+document.querySelectorAll('.card').forEach((c) => c.addEventListener('click', () => selectFabric(c.dataset.id, { scroll: true })));
+
+$('#seasonRows').innerHTML = SEASONS.map((s) => {
+  const best = FABRICS.filter((f) => f.seasons[s.id] === 2);
+  return `<div class="srow"><div class="s-head"><b>${s.label}</b><span>${s.en} · ${s.months}</span><p>${s.note}</p></div>
+    <div class="s-list">${best.map((f) => `<button class="chip" data-go="${f.id}">${esc(f.name)}</button>`).join('')}</div></div>`;
+}).join('');
+document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => selectFabric(b.dataset.go, { scroll: true })));
+
+window.addEventListener('hashchange', () => { const id = location.hash.slice(1); if (byId[id] && id !== state.id) selectFabric(id); });
+
+setMode(state.mode);
+selectFabric(state.id);
