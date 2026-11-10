@@ -466,7 +466,7 @@ export const FABRICS = [
     colors: ['#1d3cb8', '#12402e', '#5e0f22', '#121014'],
     render: { weave: 'pile', threads: 40, normal: 0.3, roughness: 0.92, sheen: 1, sheenRough: 0.3, fuzz: { layers: 14, length: 0.012, density: 0.9 }, crush: true },
     feel: { slip: 0.15, drag: 0.85, grain: 0.1, crisp: 0 },
-    sound: { f: 900, q: 0.7, gain: 0.05, crackle: 0 },
+    sound: { f: 700, q: 0.6, gain: 0.22, crackle: 0 },
   },
   {
     id: 'pashmina', name: 'Pashmina', local: 'Pashm', family: 'warm',
@@ -490,7 +490,7 @@ export const FABRICS = [
     colors: ['#b99a73', '#8e8a86', '#3a3a3e', '#ece4d4'],
     render: { weave: 'twill', threads: 30, normal: 0.22, roughness: 0.95, sheen: 0.7, sheenRough: 0.85, fuzz: { layers: 12, length: 0.02, density: 0.5 }, zari: 'embroidery' },
     feel: { slip: 0.3, drag: 0.6, grain: 0.05, crisp: 0 },
-    sound: { f: 800, q: 0.7, gain: 0.04, crackle: 0 },
+    sound: { f: 650, q: 0.6, gain: 0.2, crackle: 0 },
   },
 
   // ───────────────────────────── GLAMOUR ─────────────────────────────

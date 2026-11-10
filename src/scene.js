@@ -237,6 +237,7 @@ export class FabricStage {
       toNdc(e); this.pointerInside = true;
       el.setPointerCapture(e.pointerId);
       const hit = this._raycast();
+      this.emit('press', { hit: !!hit, pointerType: e.pointerType });
       if (hit) {
         this.cloth.startGrab(hit.point, 0.18);
         this.grabDepth = hit.point.z + 0.35; // lift the cloth toward you

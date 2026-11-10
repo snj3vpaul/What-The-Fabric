@@ -48,7 +48,7 @@ document.getElementById('app').innerHTML = `
     <div class="hud bottom-hud">
       <div class="swatches" id="swatches" role="radiogroup" aria-label="Dye colour"></div>
       <div class="actions">
-        <button class="ghost" id="sound" aria-pressed="false" title="Rustle sound and, on Android, light vibration">Sound &amp; haptics: off</button>
+        <button class="ghost" id="sound" aria-pressed="false" title="Rustle sound, plus vibration on Android or a tap on iPhone">Sound &amp; haptics: off</button>
         <button class="ghost" id="zoom" aria-pressed="false">Look closer</button>
         <button class="ghost" id="reset">Reset drape</button>
       </div>
@@ -76,7 +76,7 @@ document.getElementById('app').innerHTML = `
   <div class="cols">
     <p><b>The movement is simulated, not animated.</b> Each fabric is a grid of about 1,500 points joined by springs. Its weight decides how it hangs and how much air moves it. Its crispness sets how strongly it resists folding. Your cursor is a fingertip: it presses into the cloth, and its friction drags the cloth with it. Velvet grips; satin barely moves.</p>
     <p><b>The surface is built from the weave up.</b> Plain, satin, twill, crepe, slub, pile and net structures are generated as micro-relief. Silk and satin shine along the yarn direction, velvet and pashmina have a soft pile glow, organza and shimmer show colour shifts, and zari is treated as real metal. Velvet keeps the trail of your finger, as real velvet does.</p>
-    <p><b>Honest limits.</b> A screen cannot transmit touch, so feel is translated into motion, light, optional sound and light vibration. The 0–5 ratings are editorial comparisons, not lab results; real fabrics vary by mill, blend and finish. Colours are artistic, not calibrated.</p>
+    <p><b>Honest limits.</b> A screen cannot transmit touch, so feel is translated into motion, light, optional sound, and vibration on Android (iPhones allow only a single tap per touch). The 0–5 ratings are editorial comparisons, not lab results; real fabrics vary by mill, blend and finish. Colours are artistic, not calibrated.</p>
   </div>
 </section>
 <footer class="foot mono">What The Fabric! · Material Lab</footer>
@@ -89,6 +89,12 @@ if (webglAvailable()) {
   stage = new FabricStage(canvasEl, { lowPower, reducedMotion });
   feel = new Feel($('#ring'), $('#ringLabel'), { reducedMotion, bounds: () => document.querySelector('.stage').getBoundingClientRect() });
   stage.on('hover', (h) => feel.update(h));
+  stage.on('press', ({ hit }) => { feel.resume(); if (hit) feel.tap(); });
+  canvasEl.addEventListener('pointermove', (e) => {
+    // coalesced events give every touch sample, not just one per frame
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    for (const ev of (evs.length ? evs : [e])) feel.track(ev.clientX, ev.clientY);
+  });
   stage.on('grab', (g) => { $('#hint').classList.add('used'); document.body.classList.toggle('grabbing', g); });
 } else {
   canvasEl.innerHTML = `<div class="fallback"><div class="fallback-swatch" id="fbSwatch"></div><p>Your browser can’t run the 3D view, so here are the full notes and a colour swatch instead.</p></div>`;
@@ -105,12 +111,22 @@ $('#zoom').addEventListener('click', (e) => {
   e.currentTarget.textContent = on ? 'Step back' : 'Look closer';
   stage?.setZoom(on);
 });
-$('#sound').addEventListener('click', async (e) => {
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+$('#sound').addEventListener('click', (e) => {
   state.sound = !state.sound;
   e.currentTarget.setAttribute('aria-pressed', state.sound);
   e.currentTarget.textContent = `Sound & haptics: ${state.sound ? 'on' : 'off'}`;
-  await feel?.enableAudio(state.sound);
+  feel?.enableAudio(state.sound); // synchronous: must stay inside the tap for mobile audio unlock
+  if (state.sound) toast(isIOS
+    ? 'Sound on. Turn the volume up. iPhone allows one haptic tap per touch (iOS 18+), not continuous vibration.'
+    : !navigator.vibrate ? 'Sound on. This browser has no vibration support.' : 'Sound on. Drag across the cloth to hear and feel it.');
 });
+function toast(msg) {
+  let t = $('#toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); $('.stage').appendChild(t); }
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 4200);
+}
 
 function setMode(mode) {
   state.mode = mode;

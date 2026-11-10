@@ -162,3 +162,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .bottom-hud { gap: 10px; }
   .seg button { padding: 6px 11px; font-size: 12px; }
 }
+
+.toast { position: absolute; left: 50%; top: 76px; transform: translate(-50%, -8px); max-width: min(90%, 420px); background: rgba(242,239,232,.96); color: var(--ink); padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.4; text-align: center; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s var(--ease); z-index: 5; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+@media (max-width: 600px) { .toast { top: 112px; } }
