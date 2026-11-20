@@ -3,6 +3,7 @@
 //   bend      → stiffness of skip-one constraints (organza holds a shape, rayon pours)
 //   damping   → how quickly motion dies (crisp fabrics settle with a snap)
 //   friction  → how much a moving fingertip drags the cloth along with it
+//   stretch   → knits give under a pull and spring back on release; woven cloth barely does
 
 export const WIDTH = 1.6;
 export const HEIGHT = 2.2;
@@ -19,7 +20,7 @@ export class Cloth {
     this.pinned = new Uint8Array(n);
     this.grab = { active: false, idx: [], w: [], target: [0, 0, 0] };
     this.finger = { active: false, x: 0, y: 0, z: 0.2, r: 0.2, vx: 0, vy: 0 };
-    this.params = { mass: 1, bend: 0.2, damping: 0.985, air: 0.5, friction: 0.4, wind: 1 };
+    this.params = { mass: 1, bend: 0.2, damping: 0.985, air: 0.5, friction: 0.4, wind: 1, stretch: 0 };
     this.time = 0;
     this._buildConstraints();
     this.resetFlat();
@@ -111,6 +112,7 @@ export class Cloth {
     this.params.damping = 0.992 - crisp * 0.003 - (mass > 1.2 ? 0.006 : 0);
     this.params.air = (0.55 + (5 - f.scales.drape) * 0.04) / mass;
     this.params.friction = f.feel.drag * 0.9 + 0.1;
+    this.params.stretch = (f.scales.stretch ?? 0) / 5;
   }
 
   step(dt, opts = {}) {
@@ -171,6 +173,10 @@ export class Cloth {
     const { cA, cB, cRest, cKind } = this;
     const m = cA.length;
     const kb = params.bend;
+    // While the hand pulls, stretchy cloth extends (up to ~45% for elastane knits) instead of
+    // dragging the whole piece along; on release, full stiffness returns and it springs back.
+    const st = this.grab.active ? params.stretch : 0;
+    const soft = 1 - 0.85 * st, maxStrain = 1 + 0.45 * st;
     for (let it = 0; it < iters; it++) {
       for (let c = 0; c < m; c++) {
         const a = cA[c], b = cB[c];
@@ -183,6 +189,7 @@ export class Cloth {
         let s = (d - cRest[c]) / (d * w);
         if (kind === 2) { if (d > cRest[c]) continue; s *= kb; }      // bending resists folding only
         else if (kind === 1) s *= 0.9;
+        if (st && kind !== 2 && d > cRest[c] && d < cRest[c] * maxStrain) s *= soft;
         pos[ka] += dx * s * wa; pos[ka + 1] += dy * s * wa; pos[ka + 2] += dz * s * wa;
         pos[kb3] -= dx * s * wb; pos[kb3 + 1] -= dy * s * wb; pos[kb3 + 2] -= dz * s * wb;
       }
@@ -203,10 +210,15 @@ export class Cloth {
       // grabbed region follows the hand
       if (this.grab.active) {
         const G = this.grab;
+        // Pulling DOWN on hanging cloth can only be done by lengthening it. Woven cloth won't
+        // lengthen, so the grip slips after a few cm; a knit follows the hand much further.
+        // Sideways swings and lifts toward you need no stretch and stay free.
+        const reach = 0.06 + 0.5 * params.stretch;
+        const ty = Math.max(G.target[1], G.origin[1] - reach);
         for (let q = 0; q < G.idx.length; q++) {
           const k = G.idx[q] * 3, w = G.w[q];
           pos[k] += (G.target[0] + G.off[q * 3] - pos[k]) * w;
-          pos[k + 1] += (G.target[1] + G.off[q * 3 + 1] - pos[k + 1]) * w;
+          pos[k + 1] += (ty + G.off[q * 3 + 1] - pos[k + 1]) * w;
           pos[k + 2] += (G.target[2] + G.off[q * 3 + 2] - pos[k + 2]) * w;
         }
       }
@@ -225,6 +237,7 @@ export class Cloth {
     }
     G.off = new Float32Array(off);
     G.target = [point.x, point.y, point.z];
+    G.origin = [point.x, point.y, point.z];
     G.active = G.idx.length > 0;
     return G.active;
   }

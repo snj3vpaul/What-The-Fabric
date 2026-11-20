@@ -6,7 +6,7 @@ import { Feel } from './feel.js';
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const lowPower = matchMedia('(pointer: coarse)').matches || (navigator.hardwareConcurrency || 8) <= 4;
 
-const SCALE_LABELS = { drape: 'Drape', crisp: 'Crispness', sheen: 'Sheen', breath: 'Breathability', warmth: 'Warmth' };
+const SCALE_LABELS = { drape: 'Drape', crisp: 'Crispness', sheen: 'Sheen', breath: 'Breathability', warmth: 'Warmth', stretch: 'Stretch' };
 const MODES = [
   { id: 'pleats', label: 'Saree pleats', hint: 'Gathered at the waist. Watch how the pleats fan out.' },
   { id: 'pallu', label: 'Pallu', hint: 'Falling free from the shoulder.' },
@@ -15,13 +15,14 @@ const MODES = [
 const PRESETS = [
   { label: 'Delhi · May', t: 44, humid: false },
   { label: 'Mumbai · July', t: 31, humid: true },
+  { label: 'Chennai · May', t: 38, humid: true },
   { label: 'Bengaluru · Nov', t: 23, humid: false },
   { label: 'Lahore · Jan', t: 7, humid: false },
 ];
 
 const state = {
   id: (location.hash.slice(1) && byId[location.hash.slice(1)]) ? location.hash.slice(1) : 'velvet',
-  color: 0, mode: 'pallu', temp: 31, humid: false, sound: false,
+  color: 0, mode: 'pallu', temp: 31, humid: false, sound: false, family: 'all',
 };
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -31,7 +32,7 @@ const dots = (n, max = 5) => Array.from({ length: max }, (_, i) => `<i class="${
 document.getElementById('app').innerHTML = `
 <header class="top">
   <a class="mark" href="#" aria-label="What The Fabric! home"><span>What The</span> <em>Fabric!</em></a>
-  <p class="tag">A material lab for suits &amp; sarees</p>
+  <p class="tag">A material lab for suits, sarees &amp; activewear</p>
   <nav><a href="#atlas">Atlas</a><a href="#seasons">Season guide</a><a href="#about">About the model</a></nav>
 </header>
 
@@ -62,20 +63,24 @@ document.getElementById('app').innerHTML = `
 </main>
 
 <section class="atlas" id="atlas">
-  <div class="section-head"><h2>The atlas</h2><p>Twenty cloths that actually reach a tailor’s table in India and Pakistan. Each one is modelled for touch, temperature and drape. Choose one to try it.</p></div>
+  <div class="section-head"><h2>The atlas</h2><p>${FABRICS.length} cloths, from Punjabi lawn to Kanjivaram silk to the knits in your gym bag. Each one is modelled for touch, temperature, drape and stretch. Choose one to try it.</p></div>
+  <div class="filters" role="radiogroup" aria-label="Filter by family">
+    <button class="chip" role="radio" data-fam="all">All <small>${FABRICS.length}</small></button>
+    ${FAMILIES.map((fam) => `<button class="chip" role="radio" data-fam="${fam.id}">${fam.short} <small>${FABRICS.filter((f) => f.family === fam.id).length}</small></button>`).join('')}
+  </div>
   <div class="grid" id="grid"></div>
 </section>
 
 <section class="seasons" id="seasons">
-  <div class="section-head"><h2>Season guide</h2><p>What to wear when, across the North Indian and Punjab plains. Fabrics listed are the strongest choices for each season.</p></div>
+  <div class="section-head"><h2>Season guide</h2><p>What to wear when, across the North Indian and Punjab plains. Fabrics listed are the strongest choices for each season. For the humid South, use the climate presets on each fabric.</p></div>
   <div class="season-rows" id="seasonRows"></div>
 </section>
 
 <section class="about" id="about">
   <h2>About the model</h2>
   <div class="cols">
-    <p><b>The movement is simulated, not animated.</b> Each fabric is a grid of about 1,500 points joined by springs. Its weight decides how it hangs and how much air moves it. Its crispness sets how strongly it resists folding. Your cursor is a fingertip: it presses into the cloth, and its friction drags the cloth with it. Velvet grips; satin barely moves.</p>
-    <p><b>The surface is built from the weave up.</b> Plain, satin, twill, crepe, slub, pile and net structures are generated as micro-relief. Silk and satin shine along the yarn direction, velvet and pashmina have a soft pile glow, organza and shimmer show colour shifts, and zari is treated as real metal. Velvet keeps the trail of your finger, as real velvet does.</p>
+    <p><b>The movement is simulated, not animated.</b> Each fabric is a grid of about 1,500 points joined by springs. Its weight decides how it hangs and how much air moves it. Its crispness sets how strongly it resists folding. Pull a knit downward and it stretches and springs back; pull woven silk and your grip slips. Your cursor is a fingertip: it presses into the cloth, and its friction drags the cloth with it. Velvet grips; satin barely moves.</p>
+    <p><b>The surface is built from the weave up.</b> Plain, satin, twill, crepe, slub, pile, net and knit structures are generated as micro-relief. Silk and satin shine along the yarn direction, velvet and pashmina have a soft pile glow, organza and shimmer show colour shifts, and zari is treated as real metal. Velvet keeps the trail of your finger, as real velvet does. Patterns follow how they are really made: ikat edges are feathered, korvai borders are a second colour, and bandhani dots each keep a small undyed centre.</p>
     <p><b>Honest limits.</b> A screen cannot transmit touch, so feel is translated into motion, light, optional sound, and vibration on Android (iPhones allow only a single tap per touch). The 0–5 ratings are editorial comparisons, not lab results; real fabrics vary by mill, blend and finish. Colours are artistic, not calibrated.</p>
   </div>
 </section>
@@ -239,7 +244,7 @@ function updateVerdict(f) {
 
 // ───────── atlas + seasons ─────────
 $('#grid').innerHTML = FABRICS.map((f) => `
-  <button class="card" data-id="${f.id}">
+  <button class="card" data-id="${f.id}" data-family="${f.family}">
     <span class="sw" style="--c:${f.colors[0]}"></span>
     <span class="c-name">${esc(f.name)}</span>
     <span class="c-local mono">${esc(f.local)}</span>
@@ -247,10 +252,19 @@ $('#grid').innerHTML = FABRICS.map((f) => `
     <span class="c-bars">
       <span><em>Breath</em><span class="dots">${dots(f.scales.breath)}</span></span>
       <span><em>Warmth</em><span class="dots">${dots(f.scales.warmth)}</span></span>
+      <span><em>Stretch</em><span class="dots">${dots(f.scales.stretch)}</span></span>
     </span>
     <span class="c-seasons">${SEASONS.map((s) => `<i class="s${f.seasons[s.id]}" title="${s.en}">${s.en.slice(0, 2)}</i>`).join('')}</span>
   </button>`).join('');
 document.querySelectorAll('.card').forEach((c) => c.addEventListener('click', () => selectFabric(c.dataset.id, { scroll: true })));
+
+function setFamily(fam) {
+  state.family = fam;
+  document.querySelectorAll('[data-fam]').forEach((b) => b.setAttribute('aria-checked', b.dataset.fam === fam));
+  document.querySelectorAll('.card').forEach((c) => { c.hidden = fam !== 'all' && c.dataset.family !== fam; });
+}
+document.querySelectorAll('[data-fam]').forEach((b) => b.addEventListener('click', () => setFamily(b.dataset.fam)));
+setFamily('all');
 
 $('#seasonRows').innerHTML = SEASONS.map((s) => {
   const best = FABRICS.filter((f) => f.seasons[s.id] === 2);

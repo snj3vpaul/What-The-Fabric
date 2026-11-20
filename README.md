@@ -1,6 +1,6 @@
 # What The Fabric! — Material Lab
 
-An interactive textile explorer for Punjabi suits, Pakistani suits and sarees. Built with Vite and Three.js. Designed for deployment on Vercel.
+An interactive textile explorer for Punjabi suits, Pakistani suits, regional sarees and activewear. Built with Vite and Three.js. Designed for deployment on Vercel.
 
 ## Run locally
 
@@ -24,11 +24,12 @@ Open the URL shown by Vite (usually http://localhost:5173). Link straight to a f
 
 ```
 src/
-  fabrics.js   The atlas: 20 fabrics × feel, thermal behaviour, seasons, uses, care, expert notes,
+  fabrics.js   The atlas: 45 fabrics × feel, thermal behaviour, seasons, uses, care, expert notes,
                plus render and physics parameters. Comfort and first-touch models live here too.
   cloth.js     Verlet cloth simulation (≈1,500 particles). Weight, crispness, damping, air drag and
                fingertip friction come from each fabric. Three drape modes.
-  textures.js  Procedural weave micro-relief (plain, satin, twill, crepe, slub, pile, net), zari
+  textures.js  Procedural weave micro-relief (plain, satin, twill, crepe, slub, pile, net, knit), zari
+               borders, korvai/temple borders, feathered ikat, checks, jamdani, bandhani dots, sport panels,
                borders, Banarasi kalga butis, Chanderi coins, lawn block prints, sozni embroidery,
                shimmer sparkle, the velvet finger-trail canvas and the jharokha backdrop.
   scene.js     Three.js stage: physically based materials (sheen, anisotropy, iridescence, metal zari,
@@ -40,11 +41,16 @@ src/
   style.css    Editorial layout.
 ```
 
-### The twenty fabrics
+### The 45 fabrics
 Silks & zari: Katan silk, Tissue silk, Tussar, Banarasi brocade, Satin ·
+South Indian weaves: Kanjivaram, Mysore silk, Kerala kasavu, Pochampally ikat, Uppada, Gadwal, Chettinad cotton, Mangalagiri ·
+Regional handlooms: Paithani, Patola, Baluchari, Jamdani, Bandhani, Kota Doria, Maheshwari, Muga ·
 Sheers & crepes: Chiffon, Georgette, Organza, Chanderi, Net, Crepe ·
 Cottons & bast: Lawn, Mulmul, Cambric, Khadi/Khaddar, Linen, Rayon ·
-Pile & wool: Velvet, Pashmina · Glamour: Shimmer (lurex)
+Pile & wool: Velvet, Pashmina · Glamour: Shimmer (lurex) ·
+Activewear & performance: Cotton jersey, Performance polyester, Nylon-spandex, Merino, Bamboo viscose, Lyocell, Sports mesh, French terry, Polar fleece
+
+Every fabric also carries a **stretch** rating (pull a knit down and it stretches and springs back; woven silk lets your grip slip) and a **wick** rating, so the comfort model credits performance knits that absorb almost nothing but move sweat outward to evaporate. The atlas can be filtered by family.
 
 ### Interactions
 - **Hover** acts as a fingertip that presses into the cloth. Its friction drags the cloth along: velvet grips, satin slips away.
@@ -52,7 +58,7 @@ Pile & wool: Velvet, Pashmina · Glamour: Shimmer (lurex)
 - **Saree pleats / Pallu / Dupatta** re-pin the same cloth the way it is worn.
 - **Look closer** moves to macro distance, where the weave, zari and pile become visible and your hand pans like a loupe.
 - **Velvet** keeps the trail of your finger, which slowly recovers.
-- **Climate presets** (Delhi May, Mumbai July, Bengaluru Nov, Lahore Jan), a temperature slider and a humid toggle drive the comfort verdict and the first-touch sensation. The fingertip ring turns blue for cool-touch fabrics and amber for warm ones.
+- **Climate presets** (Delhi May, Mumbai July, Chennai May, Bengaluru Nov, Lahore Jan), a temperature slider and a humid toggle drive the comfort verdict and the first-touch sensation. The fingertip ring turns blue for cool-touch fabrics and amber for warm ones.
 - **Sound & haptics** (opt-in): a band-filtered rustle tuned per fabric (organza crackles, silk whispers, velvet is near-silent) and short vibrations for slubby or crisp cloth on Android.
 
 ## Honest limitations

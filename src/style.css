@@ -125,6 +125,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .section-head p { margin: 0; color: var(--muted); max-width: 52ch; }
 @media (max-width: 760px) { .section-head { grid-template-columns: 1fr; } }
 .atlas, .seasons, .about { padding: clamp(48px, 7vw, 96px) clamp(16px, 3vw, 36px); border-top: 1px solid var(--line); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.filters .chip small { font: 10px var(--mono); color: var(--muted); margin-left: 2px; }
+.filters .chip[aria-checked="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.filters .chip[aria-checked="true"] small { color: rgba(242,239,232,.6); }
+.card[hidden] { display: none; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
 .card { all: unset; box-sizing: border-box; cursor: pointer; background: var(--paper); padding: 20px 18px 18px; display: flex; flex-direction: column; gap: 6px; min-height: 230px; transition: background .35s var(--ease); position: relative; }
 .card:hover, .card[aria-current="true"] { background: #fbf9f4; }

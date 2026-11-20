@@ -55,6 +55,14 @@ export function weaveHeight(type, size, threads) {
         const top = ((i + j) % 4) < 2;
         const warp = Math.max(0, Math.sin(Math.PI * fu)), weft = Math.max(0, Math.sin(Math.PI * fv));
         val = top ? warp * 0.9 + weft * 0.1 : weft * 0.8 + warp * 0.15;
+      } else if (type === 'knit') {
+        // single jersey: columns (wales) of V-shaped loops. Each stitch is two slanted legs that
+        // meet at the bottom; the next row's loop sits on top of it, so it reads as a chevron rib.
+        const lx = 0.22 + 0.26 * fv, rx = 0.78 - 0.26 * fv;
+        const leg = (cx) => Math.max(0, 1 - Math.pow((fu - cx) / 0.2, 2));
+        const bulge = 0.55 + 0.45 * Math.sin(Math.PI * fv);
+        val = Math.max(leg(lx), leg(rx)) * bulge;
+        val = val * 0.9 + fbm(fine, x / 3, y / 3) * 0.1;
       } else if (type === 'pile') {
         val = fbm(fine, x / 1.5, y / 1.5);
       } else if (hex) {
@@ -191,6 +199,11 @@ export function artwork(fabric, color, W = 744, H = 1024) {
   }
 
   const zari = (fill = ZARI) => { ctx.fillStyle = fill; mx.fillStyle = 'rgb(0,110,255)'; };
+  const plain = (fill) => { ctx.fillStyle = fill; mx.fillStyle = `rgb(0,255,${baseMetal})`; };
+  // Woven-in motifs: zari (metal) by default, silk thread (matte, contrasting ink) when r.silkMotif
+  const silkInk = contrastInk(color) ? shade(color, -0.32) : shade(color, 0.32);
+  const motif = () => (r.silkMotif ? plain(silkInk) : zari());
+  const diamond = (g, x, y, w, h) => { g.beginPath(); g.moveTo(x, y - h); g.lineTo(x + w, y); g.lineTo(x, y + h); g.lineTo(x - w, y); g.closePath(); g.fill(); };
   const both = (fn) => { fn(ctx); fn(mx); };
 
   if (r.zari === 'tissue') {
@@ -203,7 +216,7 @@ export function artwork(fabric, color, W = 744, H = 1024) {
     const thin = r.zari === 'border-thin' || r.zari === 'coins';
     const bh = thin ? H * 0.035 : H * (r.zari === 'brocade' ? 0.12 : 0.085);
     // bottom border (pallu end / hem) — the most visible zari on a hanging saree
-    zari(); both((g) => g.fillRect(0, H - bh, W, bh));
+    motif(); both((g) => g.fillRect(0, H - bh, W, bh));
     ctx.fillStyle = color; mx.fillStyle = `rgb(0,255,${baseMetal})`;
     both((g) => g.fillRect(0, H - bh * 0.62, W, bh * 0.12));
     if (!thin) {
@@ -212,18 +225,117 @@ export function artwork(fabric, color, W = 744, H = 1024) {
       for (let x = 18; x < W; x += 36) both((g) => paisley(g, x, H - bh * 0.3, bh * 0.16, Math.PI * 0.15));
     }
     // side selvedge lines
-    zari(); both((g) => { g.fillRect(0, 0, thin ? 4 : 8, H); g.fillRect(W - (thin ? 4 : 8), 0, thin ? 4 : 8, H); });
+    motif(); both((g) => { g.fillRect(0, 0, thin ? 4 : 8, H); g.fillRect(W - (thin ? 4 : 8), 0, thin ? 4 : 8, H); });
   }
 
   if (r.zari === 'brocade') {
     // kalga (paisley) jaal + small butis, woven in zari
-    zari();
+    motif();
     for (let y = 70, row = 0; y < H * 0.84; y += 88, row++) {
       for (let x = (row % 2 ? 62 : 18); x < W; x += 88) {
         both((g) => paisley(g, x, y, 17, row % 2 ? 0.5 : -0.5));
         both((g) => { g.beginPath(); g.arc(x + 44, y + 44, 4, 0, Math.PI * 2); g.fill(); });
       }
     }
+  }
+  // Contrast (korvai) border: a band in a second colour, edged and patterned in zari.
+  // 'temple' adds the Kanjivaram/Gadwal temple teeth (gopuram) rising into the body.
+  if (r.zari === 'temple' || r.zari === 'korvai') {
+    const bh = H * 0.14, top = H - bh, con = r.contrast || shade(color, -0.25);
+    plain(con); both((g) => g.fillRect(0, top, W, bh));
+    if (r.zari === 'temple') {
+      const tw = 30, th = 26;
+      for (let x = 0; x < W + tw; x += tw) both((g) => { g.beginPath(); g.moveTo(x - tw / 2, top + 1); g.lineTo(x, top - th); g.lineTo(x + tw / 2, top + 1); g.closePath(); g.fill(); });
+      zari();
+      for (let x = 0; x < W + tw; x += tw) both((g) => { g.beginPath(); g.moveTo(x - 4, top - th + 9); g.lineTo(x, top - th + 1); g.lineTo(x + 4, top - th + 9); g.closePath(); g.fill(); });
+    }
+    zari();
+    both((g) => { g.fillRect(0, top + bh * 0.08, W, bh * 0.07); g.fillRect(0, H - bh * 0.18, W, bh * 0.1); });
+    // mayil (peacock-eye) and paisley row woven in zari inside the border
+    for (let x = 22, k = 0; x < W; x += 44, k++) both((g) => (k % 2 ? paisley(g, x, top + bh * 0.52, bh * 0.15, 0.6) : (g.beginPath(), g.arc(x, top + bh * 0.52, bh * 0.09, 0, Math.PI * 2), g.fill())));
+    plain(con); both((g) => { g.fillRect(0, 0, 10, top); g.fillRect(W - 10, 0, 10, top); });
+    zari(); both((g) => { g.fillRect(10, 0, 3, top); g.fillRect(W - 13, 0, 3, top); });
+  }
+  if (r.butis) {
+    // small zari butis scattered over the body
+    zari();
+    for (let y = 46, row = 0; y < H * 0.8; y += 70, row++)
+      for (let x = (row % 2 ? 58 : 24); x < W - 12; x += 70) both((g) => { flower(g, x, y, 6, 4); g.beginPath(); g.arc(x, y, 2.5, 0, Math.PI * 2); g.fill(); });
+  }
+  if (r.zari === 'kasavu') {
+    // plain gold band at the hem with a thin coloured line: Kerala kasavu, Maheshwari
+    const bh = H * 0.07;
+    zari(); both((g) => { g.fillRect(0, H - bh, W, bh); g.fillRect(0, H - bh * 1.55, W, bh * 0.14); g.fillRect(0, 0, 5, H); g.fillRect(W - 5, 0, 5, H); });
+    if (r.contrast) { plain(r.contrast); both((g) => g.fillRect(0, H - bh * 1.28, W, bh * 0.12)); }
+  }
+  if (r.zari === 'ikat') {
+    // resist-dyed diamonds. Each motif is drawn several times with small sideways offsets
+    // at low opacity: the feathered "blur" that hand-tied ikat yarn always shows.
+    const light = contrastInk(color);
+    const a = r.inkA || (light ? shade(color, -0.4) : '#f1e7d0');
+    const b = r.inkB || (light ? '#1d1c1f' : shade(color, 0.28));
+    const feather = (fill, fn) => { ctx.fillStyle = fill; for (let k = -3; k <= 3; k++) { ctx.save(); ctx.globalAlpha = 0.24; ctx.translate(k * 2.2, 0); fn(ctx); ctx.restore(); } };
+    for (let y = 40, row = 0; y < H * 0.86; y += 64, row++) {
+      for (let x = (row % 2 ? 48 : 0); x < W + 48; x += 96) {
+        feather(a, (g) => diamond(g, x, y, 30, 26));
+        feather(b, (g) => diamond(g, x, y, 15, 13));
+        feather(a, (g) => diamond(g, x, y, 5, 5));
+      }
+    }
+    const bh = H * 0.1;
+    plain(b); both((g) => g.fillRect(0, H - bh, W, bh));
+    for (let x = 0; x < W + 24; x += 24) feather(a, (g) => diamond(g, x, H - bh / 2, 9, bh * 0.32));
+  }
+  if (r.zari === 'checks') {
+    // kattam checks (Chettinad) or self-coloured khat (Kota Doria, where the grid is the weave)
+    const ink = r.selfChecks ? shade(color, -0.12) : (contrastInk(color) ? '#1d1c1f' : '#f1e7d0');
+    const step = r.selfChecks ? 34 : 58, lw = r.selfChecks ? 5 : 7;
+    ctx.fillStyle = ink;
+    for (let x = step / 2; x < W; x += step) { ctx.fillRect(x, 0, lw, H); if (!r.selfChecks) ctx.fillRect(x + lw + 4, 0, 2, H); }
+    for (let y = step / 2; y < H; y += step) { ctx.fillRect(0, y, W, lw); if (!r.selfChecks) ctx.fillRect(0, y + lw + 4, W, 2); }
+    if (r.contrast) {
+      const bh = H * 0.13;
+      ctx.fillStyle = r.contrast; ctx.fillRect(0, H - bh, W, bh);
+      ctx.fillStyle = color; ctx.fillRect(0, H - bh * 0.7, W, 4); ctx.fillRect(0, H - bh * 0.35, W, 4);
+    }
+  }
+  if (r.zari === 'jamdani') {
+    // hand-inserted motifs on a sheer ground; zari for Uppada, white cotton for Jamdani
+    const ink = r.motifMetal ? null : (contrastInk(color) ? shade(color, -0.3) : '#f6f1e6');
+    const set = () => (r.motifMetal ? zari() : plain(ink));
+    set();
+    for (let y = 44, row = 0; y < H * 0.84; y += 60, row++)
+      for (let x = (row % 2 ? 52 : 18); x < W; x += 68) both((g) => { flower(g, x, y, 9, 6); g.fillRect(x - 1, y + 7, 2, 9); });
+    const bh = H * 0.11;
+    set(); both((g) => { g.fillRect(0, H - bh, W, 4); g.fillRect(0, H - 10, W, 4); });
+    for (let x = 14; x < W; x += 28) both((g) => flower(g, x, H - bh / 2, 9, 5));
+  }
+  if (r.zari === 'bandhani') {
+    // tie-dye dots: each is slightly irregular, with a small dyed centre where the thread sat
+    const light = contrastInk(color);
+    const dot = light ? shade(color, -0.4) : '#f6efe0', core = light ? shade(color, -0.15) : '#e9c24a';
+    let s = 17;
+    const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    const drop = (x, y, rad) => {
+      ctx.fillStyle = dot; ctx.beginPath(); ctx.ellipse(x, y, rad * (0.85 + rnd() * 0.3), rad * (0.85 + rnd() * 0.3), rnd() * 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = core; ctx.beginPath(); ctx.arc(x + (rnd() - 0.5), y + (rnd() - 0.5), rad * 0.32, 0, Math.PI * 2); ctx.fill();
+    };
+    for (let y = 30, row = 0; y < H * 0.88; y += 54, row++)
+      for (let x = (row % 2 ? 44 : 14); x < W; x += 60) {
+        for (let k = 0; k < 8; k++) { const ang = (k / 8) * Math.PI * 2; drop(x + Math.cos(ang) * 12, y + Math.sin(ang) * 12, 2.6); }
+        drop(x, y, 3.2);
+      }
+    const bh = H * 0.09;
+    ctx.fillStyle = shade(color, light ? -0.3 : 0.18); ctx.fillRect(0, H - bh, W, bh);
+    for (let x = 8; x < W; x += 12) drop(x, H - bh / 2, 2.4);
+  }
+  if (r.zari === 'panel') {
+    // activewear: contrast side panels with a thin reflective piping strip
+    const pw = W * 0.07, con = r.contrast || shade(color, 0.2);
+    ctx.fillStyle = con; ctx.fillRect(W * 0.18, 0, pw, H); ctx.fillRect(W * 0.82 - pw, 0, pw, H);
+    ctx.fillStyle = '#d9dde2';
+    ctx.fillRect(W * 0.18 + pw, 0, 3, H); ctx.fillRect(W * 0.82 - pw - 3, 0, 3, H);
+    mx.fillStyle = 'rgb(0,60,200)'; mx.fillRect(W * 0.18 + pw, 0, 3, H); mx.fillRect(W * 0.82 - pw - 3, 0, 3, H);
   }
   if (r.zari === 'coins') {
     zari();
@@ -266,7 +378,9 @@ export function artwork(fabric, color, W = 744, H = 1024) {
   map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 8;
   const metal = new THREE.CanvasTexture(m);
   metal.colorSpace = THREE.NoColorSpace; metal.anisotropy = 8;
-  const hasMetal = !!(r.zari && r.zari !== 'embroidery') || !!r.metalness;
+  const NON_METAL = ['embroidery', 'ikat', 'checks', 'bandhani'];
+  const hasMetal = (!!r.zari && !NON_METAL.includes(r.zari) && !r.silkMotif && !(r.zari === 'jamdani' && !r.motifMetal))
+    || !!r.metalness || !!r.butis;
   return { map, metal: hasMetal ? metal : null };
 }
 
